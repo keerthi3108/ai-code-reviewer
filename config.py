@@ -4,9 +4,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env", override=True)
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
@@ -28,9 +27,41 @@ def _get_config(key: str, default: str = "") -> str:
     return default
 
 
-GROQ_API_KEY = _get_config("GROQ_API_KEY")
-OPENAI_API_KEY = _get_config("OPENAI_API_KEY")
-AI_PROVIDER = _get_config("AI_PROVIDER", "groq").lower()
+def get_groq_api_key() -> str:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    return _get_config("GROQ_API_KEY")
+
+
+def get_openai_api_key() -> str:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    return _get_config("OPENAI_API_KEY")
+
+
+def get_ai_provider() -> str:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    return _get_config("AI_PROVIDER", "groq").lower()
+
+
+def get_langsmith_api_key() -> str:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    return _get_config("LANGSMITH_API_KEY") or _get_config("LANGCHAIN_API_KEY")
+
+
+def get_langsmith_project() -> str:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    return _get_config("LANGSMITH_PROJECT", "automated-code-reviewer")
+
+
+def is_langsmith_enabled() -> bool:
+    load_dotenv(BASE_DIR / ".env", override=True)
+    val = _get_config("LANGSMITH_TRACING", "false").lower()
+    return val in ("true", "1", "yes", "on")
+
+
+# Backwards-compatible module-level reads (refreshed on import)
+GROQ_API_KEY = get_groq_api_key()
+OPENAI_API_KEY = get_openai_api_key()
+AI_PROVIDER = get_ai_provider()
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 OPENAI_MODEL = "gpt-4o-mini"

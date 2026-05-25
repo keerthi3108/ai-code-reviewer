@@ -4,13 +4,14 @@ import re
 from typing import Any, Optional
 
 from config import (
-    AI_PROVIDER,
-    GROQ_API_KEY,
     GROQ_MODEL,
-    OPENAI_API_KEY,
     OPENAI_MODEL,
     PERSONALITIES,
+    get_ai_provider,
+    get_groq_api_key,
+    get_openai_api_key,
 )
+from services.langsmith_tracing import configure_langsmith, maybe_trace
 
 
 REVIEW_SCHEMA = """
@@ -92,10 +93,11 @@ def _extract_json(text: str) -> dict:
         raise
 
 
+@maybe_trace(name="groq_code_review", run_type="llm")
 def _call_groq(prompt: str) -> str:
     from groq import Groq
 
-    client = Groq(api_key=GROQ_API_KEY)
+    client = Groq(api_key=get_groq_api_key())
     response = client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
@@ -108,10 +110,11 @@ def _call_groq(prompt: str) -> str:
     return response.choices[0].message.content or ""
 
 
+@maybe_trace(name="openai_code_review", run_type="llm")
 def _call_openai(prompt: str) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = OpenAI(api_key=get_openai_api_key())
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -182,16 +185,18 @@ def _fallback_review(code: str, language: str, error: str) -> dict:
 
 
 def get_api_status() -> dict:
-    groq_ok = bool(GROQ_API_KEY)
-    openai_ok = bool(OPENAI_API_KEY)
+    groq_ok = bool(get_groq_api_key())
+    openai_ok = bool(get_openai_api_key())
+    provider = get_ai_provider()
     return {
         "groq": groq_ok,
         "openai": openai_ok,
-        "provider": AI_PROVIDER,
-        "ready": (AI_PROVIDER == "groq" and groq_ok) or (AI_PROVIDER == "openai" and openai_ok) or groq_ok or openai_ok,
+        "provider": provider,
+        "ready": (provider == "groq" and groq_ok) or (provider == "openai" and openai_ok) or groq_ok,
     }
 
 
+@maybe_trace(name="code_review_pipeline", run_type="chain")
 def review_code(
     code: str,
     language: str = "python",
@@ -199,14 +204,16 @@ def review_code(
     filename: str = "pasted_code",
 ) -> dict[str, Any]:
     """Run AI code review and return structured results."""
+    configure_langsmith()
     prompt = _build_prompt(code, language, personality_key, filename)
 
     try:
-        if AI_PROVIDER == "openai" and OPENAI_API_KEY:
+        provider = get_ai_provider()
+        if provider == "openai" and get_openai_api_key():
             raw = _call_openai(prompt)
-        elif GROQ_API_KEY:
+        elif get_groq_api_key():
             raw = _call_groq(prompt)
-        elif OPENAI_API_KEY:
+        elif get_openai_api_key():
             raw = _call_openai(prompt)
         else:
             return _fallback_review(code, language, "No API key configured")

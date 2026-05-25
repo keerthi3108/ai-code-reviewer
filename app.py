@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import PERSONALITIES, SUPPORTED_EXTENSIONS
 from services.ai_reviewer import get_api_status, review_code
+from services.langsmith_tracing import configure_langsmith, get_langsmith_status
 from services.bandit_scanner import get_python_code, run_bandit_scan, should_run_bandit
 from services.storage import ReviewStorage
 from ui.components import (
@@ -42,6 +43,7 @@ st.set_page_config(
 )
 
 inject_styles()
+configure_langsmith()
 
 # ─── Session state ───────────────────────────────────────────────────────────
 if "review_result" not in st.session_state:
@@ -100,8 +102,16 @@ def sidebar_config():
         provider = "Groq" if api["groq"] and (api["provider"] == "groq" or not api["openai"]) else "OpenAI"
         st.sidebar.success(f"✅ {provider} API connected")
     else:
-        st.sidebar.error("❌ No API key — using offline heuristics")
-        st.sidebar.info("Add GROQ_API_KEY or OPENAI_API_KEY to `.env`")
+        st.sidebar.error("❌ No Groq API key — using offline heuristics")
+        st.sidebar.info("Add `GROQ_API_KEY=gsk_...` to `.env` in the project folder, then restart the app.")
+
+    ls = get_langsmith_status()
+    if ls["active"]:
+        st.sidebar.success(f"📈 LangSmith tracing → `{ls['project']}`")
+    elif ls["enabled"] and not ls["configured"]:
+        st.sidebar.warning("LangSmith enabled but LANGSMITH_API_KEY missing")
+    else:
+        st.sidebar.caption("LangSmith off (set LANGSMITH_TRACING=true in .env)")
 
     personality = render_personality_selector()
 

@@ -8,3 +8,4 @@ pandas>=2.2.0
 python-dotenv>=1.0.1
 tinydb>=4.8.0
 diff-match-patch>=20230430
+langsmith>=0.1.0

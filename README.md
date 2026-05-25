@@ -53,6 +53,24 @@ Save secrets and **Reboot app**. Keys are not stored in your repo.
 
 Without API keys, the app runs in **offline heuristic mode** (pattern-based checks).
 
+## LangSmith (optional observability)
+
+Traces each AI review in [LangSmith](https://smith.langchain.com) (latency, prompts, errors).
+
+**Add to `.env` (local) or Streamlit Secrets (deploy):**
+
+```env
+LANGSMITH_API_KEY=lsv2_your_key_here
+LANGSMITH_TRACING=true
+LANGSMITH_PROJECT=automated-code-reviewer
+```
+
+Get your key: LangSmith → **Settings** → **API Keys**.
+
+**Same API key for multiple apps?** Yes — use one `LANGSMITH_API_KEY` but a **different `LANGSMITH_PROJECT` name** per app (e.g. `my-chatbot`, `automated-code-reviewer`) so traces stay separated in the dashboard.
+
+Install: `pip install langsmith` (included in `requirements.txt`).
+
 ## Usage
 
 1. Choose a **reviewer personality** in the sidebar
